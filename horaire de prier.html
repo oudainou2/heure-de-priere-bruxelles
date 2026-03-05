@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Bruxelles Prière - Oudainou</title>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #10b981; --text: #f8fafc; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .app { background: var(--card); border-radius: 24px; width: 360px; padding: 30px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); border: 1px solid #334155; }
+        h1 { color: var(--accent); margin: 0; font-size: 2.2rem; text-align: center; }
+        .author { text-align: center; color: #94a3b8; font-size: 0.9rem; margin-bottom: 25px; }
+        
+        .calendar-box { background: #0f172a; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #334155; }
+        input[type="date"] { width: 100%; background: transparent; border: none; color: white; font-size: 1.1rem; outline: none; cursor: pointer; }
+
+        .prayer-list { display: flex; flex-direction: column; gap: 10px; }
+        .prayer-card { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: #334155; border-radius: 12px; }
+        .active { border: 2px solid var(--accent); background: rgba(16, 185, 129, 0.1); }
+        .p-name { font-weight: 600; }
+        .p-time { color: var(--accent); font-family: monospace; font-size: 1.3rem; font-weight: bold; }
+
+        .footer { margin-top: 25px; display: flex; justify-content: space-between; align-items: center; }
+        .btn { background: var(--accent); color: #0f172a; border: none; padding: 10px 20px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .btn.off { background: #ef4444; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <h1>Bruxelles</h1>
+    <div class="author">fait par oudainou</div>
+    
+    <div class="calendar-box">
+        <input type="date" id="dateSelector" min="2026-03-01" max="2026-03-31">
+    </div>
+    
+    <div class="prayer-list" id="prayerContainer"></div>
+
+    <div class="footer">
+        <div id="status" style="font-size: 0.8rem; color: #94a3b8;">● Mars 2026</div>
+        <button id="alertBtn" class="btn">ALERTE : ON</button>
+    </div>
+</div>
+
+<script>
+    // TES DONNÉES DU TABLEAU (Mars 2026)
+    const dataMars = {
+        "2026-03-01": ["05:38", "12:55", "15:46", "18:24", "20:07"],
+        "2026-03-02": ["05:36", "12:55", "15:47", "18:25", "20:08"],
+        "2026-03-03": ["05:34", "12:55", "15:48", "18:27", "20:10"],
+        "2026-03-04": ["05:31", "12:54", "15:50", "18:29", "20:12"],
+        "2026-03-05": ["05:29", "12:54", "15:51", "18:30", "20:13"],
+        "2026-03-06": ["05:27", "12:54", "15:52", "18:32", "20:15"],
+        "2026-03-07": ["05:25", "12:54", "15:53", "18:34", "20:17"],
+        "2026-03-08": ["05:23", "12:53", "15:54", "18:36", "20:19"],
+        "2026-03-09": ["05:20", "12:53", "15:55", "18:37", "20:20"],
+        "2026-03-10": ["05:18", "12:53", "15:57", "18:39", "20:22"],
+        "2026-03-11": ["05:16", "12:53", "15:58", "18:41", "20:24"],
+        "2026-03-12": ["05:13", "12:52", "15:59", "18:42", "20:26"],
+        "2026-03-13": ["05:11", "12:52", "16:00", "18:44", "20:28"],
+        "2026-03-14": ["05:09", "12:52", "16:01", "18:46", "20:29"],
+        "2026-03-15": ["05:06", "12:52", "16:02", "18:47", "20:31"],
+        "2026-03-16": ["05:04", "12:51", "16:03", "18:49", "20:33"],
+        "2026-03-17": ["05:01", "12:51", "16:04", "18:51", "20:35"],
+        "2026-03-18": ["04:59", "12:51", "16:05", "18:52", "20:37"],
+        "2026-03-19": ["04:56", "12:50", "16:06", "18:54", "20:39"],
+        "2026-03-20": ["04:54", "12:50", "16:07", "18:56", "20:41"],
+        "2026-03-21": ["04:51", "12:50", "16:08", "18:57", "20:43"],
+        "2026-03-22": ["04:49", "12:49", "16:09", "18:59", "20:44"],
+        "2026-03-23": ["04:46", "12:49", "16:10", "19:00", "20:46"],
+        "2026-03-24": ["04:44", "12:49", "16:11", "19:02", "20:48"],
+        "2026-03-25": ["04:41", "12:49", "16:12", "19:04", "20:50"],
+        "2026-03-26": ["04:38", "12:48", "16:13", "19:05", "20:52"],
+        "2026-03-27": ["04:36", "12:48", "16:14", "19:07", "20:54"],
+        "2026-03-28": ["04:33", "12:48", "16:15", "19:09", "20:56"],
+        "2026-03-29": ["05:30", "13:47", "17:16", "20:10", "21:58"], // Passage heure d'été
+        "2026-03-30": ["05:28", "13:47", "17:17", "20:12", "22:00"],
+        "2026-03-31": ["05:25", "13:47", "17:18", "20:14", "22:02"]
+    };
+
+    const names = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+    const dateInput = document.getElementById('dateSelector');
+    const container = document.getElementById('prayerContainer');
+    let isAlertOn = true;
+
+    // Initialisation
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = dataMars[today] ? today : "2026-03-05";
+
+    function showPrayers(date) {
+        const times = dataMars[date];
+        if(!times) {
+            container.innerHTML = "<p>Données non dispo pour cette date</p>";
+            return;
+        }
+        
+        container.innerHTML = names.map((name, i) => `
+            <div class="prayer-card">
+                <span class="p-name">${name}</span>
+                <span class="p-time">${times[i]}</span>
+            </div>
+        `).join('');
+    }
+
+    dateInput.onchange = (e) => showPrayers(e.target.value);
+
+    document.getElementById('alertBtn').onclick = function() {
+        isAlertOn = !isAlertOn;
+        this.innerText = isAlertOn ? "ALERTE : ON" : "ALERTE : OFF";
+        this.className = isAlertOn ? "btn" : "btn off";
+    };
+
+    // Vérification de l'heure pour les alertes
+    setInterval(() => {
+        if (!isAlertOn) return;
+        const now = new Date();
+        const dateKey = now.toISOString().split('T')[0];
+        const timeKey = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+        
+        if (dataMars[dateKey]) {
+            dataMars[dateKey].forEach((time, index) => {
+                if (time === timeKey && now.getSeconds() === 0) {
+                    new Notification("Heure de " + names[index], { body: "Bruxelles" });
+                }
+            });
+        }
+    }, 1000);
+
+    if (Notification.permission !== "granted") Notification.requestPermission();
+    showPrayers(dateInput.value);
+</script>
+
+</body>
+</html>
